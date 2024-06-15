@@ -33,6 +33,7 @@ typedef struct {
 } ChessBoard;
 
 ChessBoard init_chessboard();
-
+char get_board_at(const ChessBoard board,const char* square);
+void print_board(const ChessBoard board);
 
 #endif //CHESS_H
