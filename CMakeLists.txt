@@ -3,4 +3,6 @@ project(AsciiChess C)
 
 set(CMAKE_C_STANDARD 23)
 
-add_executable(AsciiChess main.c)
+add_executable(AsciiChess main.c
+        chess.h
+        chess.c)
