@@ -14,6 +14,9 @@ int main(void) {
     move(&board, "a7", "a5");
     move(&board, "a2", "a4");
     move(&board, "a8", "a6");
+    move(&board, "g1", "f3");
+    move(&board, "h7", "h6");
+    move(&board, "f3", "d4");
     print_board(board);
     return 0;
 }

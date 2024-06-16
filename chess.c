@@ -172,6 +172,18 @@ bool try_move_rook(ChessBoard *board, const char piece, const char fileFrom, con
     set_empty(board, rankFrom, fileFrom);
     return true;
 }
+bool try_move_knight(ChessBoard *board, const char piece, const char fileFrom, const char rankFrom,
+                     const char fileTo, const char rankTo) {
+    const signed char rankOffset = rankTo - rankFrom;
+    const signed char fileOffset = fileTo - fileFrom;
+
+    //not valid knight move
+    if(!((abs(rankOffset) == 2 && abs(fileOffset) == 1) || (abs(rankOffset) == 1 && abs(fileOffset) == 2))) { return false;}
+
+    set_piece(board, piece, rankTo, fileTo);
+    set_empty(board, rankFrom, fileFrom);
+    return true;
+}
 
 bool move(ChessBoard *board, const char *from, const char *to) {
     const char piece_to_move = get_board_at_square(*board, from);
@@ -206,6 +218,7 @@ bool move(ChessBoard *board, const char *from, const char *to) {
     } else if ((piece_to_move & PIECE_MASK) == ROOK) {
         ok = try_move_rook(board, piece_to_move, fileFrom, rankFrom, fileTo, rankTo);
     } else if ((piece_to_move & PIECE_MASK) == KNIGHT) {
+        ok = try_move_knight(board, piece_to_move, fileFrom, rankFrom, fileTo, rankTo);
     } else if ((piece_to_move & PIECE_MASK) == BISHOP) {
         ok = try_move_bishop(board, piece_to_move, fileFrom, rankFrom, fileTo, rankTo);
     } else if ((piece_to_move & PIECE_MASK) == QUEEN) {
