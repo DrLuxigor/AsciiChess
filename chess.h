@@ -33,7 +33,11 @@ typedef struct {
 } ChessBoard;
 
 ChessBoard init_chessboard();
-char get_board_at(const ChessBoard board,const char* square);
+char get_board_at_square(const ChessBoard board,const char* square);
+char get_board_at(const ChessBoard board, const char rank, const char file);
 void print_board(const ChessBoard board);
-
+bool move(ChessBoard* board, const char* from, const char* to);
+void set_piece(ChessBoard* board, char piece, char rank, char file);
+void set_empty(ChessBoard* board, char rank, char file);
+bool is_empty(const ChessBoard board, char rank, char file);
 #endif //CHESS_H
