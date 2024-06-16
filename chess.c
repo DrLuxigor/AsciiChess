@@ -6,6 +6,8 @@
 
 #include <assert.h>
 #include <stdio.h>
+#include <math.h>
+#include <string.h>
 
 ChessBoard init_chessboard() {
     ChessBoard board;
@@ -42,7 +44,10 @@ char get_board_at(const ChessBoard board, const char rank, const char file) {
 void print_board(const ChessBoard board) {
     bool square_black = false;
     printf("--------------------------------\033[0m\n");
+    char currentRank = '8';
     for (int rank = 7; rank >= 0; rank--) {
+        printf("\033[0m%c | ", currentRank);
+        currentRank -= 1;
         for (int file = 0; file < 8; ++file) {
             square_black = !square_black;
             //sets background of square
@@ -63,7 +68,9 @@ void print_board(const ChessBoard board) {
         }
         printf("\n\n");
     }
-    printf("--------------------------------\033[0m\n");
+    printf("\033[0m--------------------------------\n");
+    printf("    a   b   c   d   e   f   g   h\n");
+
 }
 
 bool try_move_pawn(ChessBoard *board, const char piece, const char fileFrom, const char rankFrom,
@@ -111,7 +118,7 @@ bool try_move_pawn(ChessBoard *board, const char piece, const char fileFrom, con
         assert(moves == 1);
 
         //can only move 1 left or right for capture
-        if(fileFrom - fileTo > 1) {return false;}
+        if (fileFrom - fileTo > 1) { return false; }
 
         if (!is_empty(*board, rankTo, fileTo)) {
             set_piece(board, piece, rankTo, fileTo);
@@ -126,11 +133,63 @@ bool try_move_pawn(ChessBoard *board, const char piece, const char fileFrom, con
     return true;
 }
 
+bool try_move_bishop(ChessBoard *board, const char piece, const char fileFrom, const char rankFrom,
+                     const char fileTo, const char rankTo) {
+    //const bool black = piece & COLOR_MASK;
+    const signed char rankOffset = rankTo - rankFrom;
+    const signed char fileOffset = fileTo - fileFrom;
+    const signed char rankDir = rankOffset / abs(rankOffset);
+    const signed char fileDir = fileOffset / abs(fileOffset);
+    //move not diagonal
+    if (abs(fileOffset) != abs(rankOffset)) { return false; }
+    for (int i = 1; i < abs(rankOffset); ++i) {
+        if(!is_empty(*board, rankFrom + i*rankDir, fileFrom + i*(fileDir)))
+            return false;
+    }
+    set_piece(board, piece, rankTo, fileTo);
+    set_empty(board, rankFrom, fileFrom);
+    return true;
+}
+
+bool try_move_rook(ChessBoard *board, const char piece, const char fileFrom, const char rankFrom,
+                     const char fileTo, const char rankTo) {
+    const signed char rankOffset = rankTo - rankFrom;
+    const signed char fileOffset = fileTo - fileFrom;
+
+    //moves in 2 directions
+    if(rankOffset != 0 && fileOffset != 0) { return false;}
+    assert(!(rankOffset == 0 && fileOffset == 0));
+
+    const signed char rankDir = rankOffset == 0 ? 0 : rankOffset / abs(rankOffset);
+    const signed char fileDir = fileOffset == 0 ? 0 : fileOffset / abs(fileOffset);
+
+    for (int i = 1; i < abs(rankOffset); ++i) {
+        if(!is_empty(*board, rankFrom + i*rankDir, fileFrom + i*(fileDir)))
+            return false;
+    }
+
+    set_piece(board, piece, rankTo, fileTo);
+    set_empty(board, rankFrom, fileFrom);
+    return true;
+}
+
 bool move(ChessBoard *board, const char *from, const char *to) {
     const char piece_to_move = get_board_at_square(*board, from);
+    const char piece_at_dest = get_board_at_square(*board, to);
+
+    //from and to are same squares
+    if (strcmp(from, to) == 0) { return false; }
 
     //no piece at square
     if (piece_to_move == 0) { return false; }
+
+    //not your turn
+    const char source_color = (piece_to_move & COLOR_MASK) >> 3;
+    if (source_color != (board->flags & 0b1)) { return false; }
+
+    //captures own piece
+    const char dest_color = (piece_at_dest & COLOR_MASK) >> 3;
+    if ((piece_at_dest & PIECE_MASK) != EMPTY && source_color == dest_color) { return false; }
 
     //trying to move opponents piece
     if (board->flags & 0b1 != (piece_to_move & COLOR_MASK) >> 3) { return false; }
@@ -139,17 +198,20 @@ bool move(ChessBoard *board, const char *from, const char *to) {
     const char rankFrom = from[1] - '1';
     const char fileTo = to[0] - 'a';
     const char rankTo = to[1] - '1';
+
+    bool ok = false;
     //check if move is allowed
     if ((piece_to_move & PIECE_MASK) == PAWN) {
-        const bool ok = try_move_pawn(board, piece_to_move, fileFrom, rankFrom, fileTo, rankTo);
-        if (ok) { board->flags ^= 0b1; }
+        ok = try_move_pawn(board, piece_to_move, fileFrom, rankFrom, fileTo, rankTo);
     } else if ((piece_to_move & PIECE_MASK) == ROOK) {
+        ok = try_move_rook(board, piece_to_move, fileFrom, rankFrom, fileTo, rankTo);
     } else if ((piece_to_move & PIECE_MASK) == KNIGHT) {
     } else if ((piece_to_move & PIECE_MASK) == BISHOP) {
+        ok = try_move_bishop(board, piece_to_move, fileFrom, rankFrom, fileTo, rankTo);
     } else if ((piece_to_move & PIECE_MASK) == QUEEN) {
     } else if ((piece_to_move & PIECE_MASK) == KING) {
-    } else { return false; } //not a valid piece
-
+    }
+    if (ok) { board->flags ^= 0b1; } else { return false; }
 
     return true;
 }
