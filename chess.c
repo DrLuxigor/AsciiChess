@@ -70,7 +70,6 @@ void print_board(const ChessBoard board) {
     }
     printf("\033[0m--------------------------------\n");
     printf("    a   b   c   d   e   f   g   h\n");
-
 }
 
 bool try_move_pawn(ChessBoard *board, const char piece, const char fileFrom, const char rankFrom,
@@ -143,7 +142,7 @@ bool try_move_bishop(ChessBoard *board, const char piece, const char fileFrom, c
     //move not diagonal
     if (abs(fileOffset) != abs(rankOffset)) { return false; }
     for (int i = 1; i < abs(rankOffset); ++i) {
-        if(!is_empty(*board, rankFrom + i*rankDir, fileFrom + i*(fileDir)))
+        if (!is_empty(*board, rankFrom + i * rankDir, fileFrom + i * (fileDir)))
             return false;
     }
     set_piece(board, piece, rankTo, fileTo);
@@ -152,19 +151,19 @@ bool try_move_bishop(ChessBoard *board, const char piece, const char fileFrom, c
 }
 
 bool try_move_rook(ChessBoard *board, const char piece, const char fileFrom, const char rankFrom,
-                     const char fileTo, const char rankTo) {
+                   const char fileTo, const char rankTo) {
     const signed char rankOffset = rankTo - rankFrom;
     const signed char fileOffset = fileTo - fileFrom;
 
     //moves in 2 directions
-    if(rankOffset != 0 && fileOffset != 0) { return false;}
+    if (rankOffset != 0 && fileOffset != 0) { return false; }
     assert(!(rankOffset == 0 && fileOffset == 0));
 
     const signed char rankDir = rankOffset == 0 ? 0 : rankOffset / abs(rankOffset);
     const signed char fileDir = fileOffset == 0 ? 0 : fileOffset / abs(fileOffset);
 
     for (int i = 1; i < abs(rankOffset); ++i) {
-        if(!is_empty(*board, rankFrom + i*rankDir, fileFrom + i*(fileDir)))
+        if (!is_empty(*board, rankFrom + i * rankDir, fileFrom + i * (fileDir)))
             return false;
     }
 
@@ -172,17 +171,45 @@ bool try_move_rook(ChessBoard *board, const char piece, const char fileFrom, con
     set_empty(board, rankFrom, fileFrom);
     return true;
 }
+
 bool try_move_knight(ChessBoard *board, const char piece, const char fileFrom, const char rankFrom,
                      const char fileTo, const char rankTo) {
     const signed char rankOffset = rankTo - rankFrom;
     const signed char fileOffset = fileTo - fileFrom;
 
     //not valid knight move
-    if(!((abs(rankOffset) == 2 && abs(fileOffset) == 1) || (abs(rankOffset) == 1 && abs(fileOffset) == 2))) { return false;}
+    if (!((abs(rankOffset) == 2 && abs(fileOffset) == 1) || (abs(rankOffset) == 1 && abs(fileOffset) == 2))) {
+        return false;
+    }
 
     set_piece(board, piece, rankTo, fileTo);
     set_empty(board, rankFrom, fileFrom);
     return true;
+}
+
+bool try_move_queen(ChessBoard *board, const char piece, const char fileFrom, const char rankFrom,
+                    const char fileTo, const char rankTo) {
+    bool success = false;
+    success = try_move_bishop(board, piece, fileFrom, rankFrom, fileTo, rankTo);
+    if (!success) {
+        success = try_move_rook(board, piece, fileFrom, rankFrom, fileTo, rankTo);
+    }
+    return success;
+}
+
+bool try_move_king(ChessBoard *board, const char piece, const char fileFrom, const char rankFrom,
+                   const char fileTo, const char rankTo) {
+    const signed char rankOffset = rankTo - rankFrom;
+    const signed char fileOffset = fileTo - fileFrom;
+
+    //king can only move 1 square
+    if (rankOffset > 1 || fileOffset > 1) { return false; }
+    assert(rankOffset > 0 || fileOffset > 0);
+
+    if (rankOffset != 0 && fileOffset != 0) {
+        return try_move_bishop(board, piece, fileFrom, rankFrom, fileTo, rankTo);
+    }
+    return try_move_rook(board, piece, fileFrom, rankFrom, fileTo, rankTo);
 }
 
 bool move(ChessBoard *board, const char *from, const char *to) {
@@ -222,7 +249,9 @@ bool move(ChessBoard *board, const char *from, const char *to) {
     } else if ((piece_to_move & PIECE_MASK) == BISHOP) {
         ok = try_move_bishop(board, piece_to_move, fileFrom, rankFrom, fileTo, rankTo);
     } else if ((piece_to_move & PIECE_MASK) == QUEEN) {
+        ok = try_move_queen(board, piece_to_move, fileFrom, rankFrom, fileTo, rankTo);
     } else if ((piece_to_move & PIECE_MASK) == KING) {
+        ok = try_move_king(board, piece_to_move, fileFrom, rankFrom, fileTo, rankTo);
     }
     if (ok) { board->flags ^= 0b1; } else { return false; }
 
