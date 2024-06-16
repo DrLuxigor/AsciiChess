@@ -8,6 +8,8 @@ int main(void) {
     move(&board, "e2", "e4");
     move(&board, "e7", "e5");
     move(&board, "d2", "d4");
+    move(&board, "e5", "d4");
+    move(&board, "e4", "e5");
     print_board(board);
     return 0;
 }

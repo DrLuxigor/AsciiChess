@@ -66,7 +66,7 @@ void print_board(const ChessBoard board) {
     printf("--------------------------------\033[0m\n");
 }
 
-bool try_move_pawn(ChessBoard* board, const char piece, const char fileFrom, const char rankFrom,
+bool try_move_pawn(ChessBoard *board, const char piece, const char fileFrom, const char rankFrom,
                    const char fileTo, const char rankTo) {
     //trying to move piece backward or sideways
     const bool black = piece & COLOR_MASK;
@@ -80,7 +80,7 @@ bool try_move_pawn(ChessBoard* board, const char piece, const char fileFrom, con
 
     const char moves = black ? rankFrom - rankTo : rankTo - rankFrom;
     //trying to move pawn 2 squares when not at starting position
-    if (moves == 2 && ((black && rankFrom != 6)) || (!black && rankFrom != 1)) { return false; }
+    if (moves == 2 && ((black && rankFrom != 6) || (!black && rankFrom != 1))) { return false; }
 
     assert(moves == 1 || moves == 2);
 
@@ -89,30 +89,44 @@ bool try_move_pawn(ChessBoard* board, const char piece, const char fileFrom, con
         if (moves == 1 && is_empty(*board, rankTo, fileTo)) {
             set_piece(board, piece, rankTo, fileTo);
             set_empty(board, rankFrom, fileFrom);
+            return true;
         }
         if (moves == 2) {
-            if(black) {
-                if(is_empty(*board, rankFrom - 1, fileFrom) && is_empty(*board, rankTo, fileTo)) {
+            if (black) {
+                if (is_empty(*board, rankFrom - 1, fileFrom) && is_empty(*board, rankTo, fileTo)) {
                     set_piece(board, piece, rankTo, fileTo);
                     set_empty(board, rankFrom, fileFrom);
+                    return true;
                 }
             } else {
-                if(is_empty(*board, rankFrom + 1, fileFrom) && is_empty(*board, rankTo, fileTo)) {
+                if (is_empty(*board, rankFrom + 1, fileFrom) && is_empty(*board, rankTo, fileTo)) {
                     set_piece(board, piece, rankTo, fileTo);
                     set_empty(board, rankFrom, fileFrom);
+                    return true;
                 }
             }
         }
     } else {
         //capture
+        assert(moves == 1);
 
+        //can only move 1 left or right for capture
+        if(fileFrom - fileTo > 1) {return false;}
+
+        if (!is_empty(*board, rankTo, fileTo)) {
+            set_piece(board, piece, rankTo, fileTo);
+            set_empty(board, rankFrom, fileFrom);
+            return true;
+        } else if (false) {
+            //TODO ente passente
+        }
     }
 
 
     return true;
 }
 
-bool move(ChessBoard* board, const char *from, const char *to) {
+bool move(ChessBoard *board, const char *from, const char *to) {
     const char piece_to_move = get_board_at_square(*board, from);
 
     //no piece at square
@@ -127,8 +141,8 @@ bool move(ChessBoard* board, const char *from, const char *to) {
     const char rankTo = to[1] - '1';
     //check if move is allowed
     if ((piece_to_move & PIECE_MASK) == PAWN) {
-        const bool ok =  try_move_pawn(board, piece_to_move, fileFrom, rankFrom, fileTo, rankTo);
-        if(ok) { board->flags ^= 0b1; }
+        const bool ok = try_move_pawn(board, piece_to_move, fileFrom, rankFrom, fileTo, rankTo);
+        if (ok) { board->flags ^= 0b1; }
     } else if ((piece_to_move & PIECE_MASK) == ROOK) {
     } else if ((piece_to_move & PIECE_MASK) == KNIGHT) {
     } else if ((piece_to_move & PIECE_MASK) == BISHOP) {
@@ -140,20 +154,21 @@ bool move(ChessBoard* board, const char *from, const char *to) {
     return true;
 }
 
-void set_piece(ChessBoard* board, const char piece, const char rank, const char file) {
+void set_piece(ChessBoard *board, const char piece, const char rank, const char file) {
     unsigned int clearMask = 0b11111111111111111111111111111111;
-    const unsigned int clears = 0b1111 << ((7-file) * 4);
+    const unsigned int clears = 0b1111 << ((7 - file) * 4);
     clearMask ^= clears;
     board->board[rank] &= clearMask;
-    board->board[rank] |= piece << ((7-file) * 4);
+    board->board[rank] |= piece << ((7 - file) * 4);
 }
-void set_empty(ChessBoard* board ,const char rank,const char file) {
+
+void set_empty(ChessBoard *board, const char rank, const char file) {
     unsigned int clearMask = 0b11111111111111111111111111111111;
-    const unsigned int clears = 0b1111 << ((7-file) * 4);
+    const unsigned int clears = 0b1111 << ((7 - file) * 4);
     clearMask ^= clears;
     board->board[rank] &= clearMask;
 }
-bool is_empty(const ChessBoard board,const char rank,const char file)
-{
+
+bool is_empty(const ChessBoard board, const char rank, const char file) {
     return (get_board_at(board, rank, file) & PIECE_MASK) == EMPTY;
 }
