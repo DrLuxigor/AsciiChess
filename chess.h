@@ -28,7 +28,14 @@
 #define COLOR_MASK 0b1000
 
 typedef struct {
-    unsigned int flags;
+    unsigned int turn : 1;
+    unsigned int w_short_castle: 1;
+    unsigned int w_long_castle: 1;
+    unsigned int b_short_castle: 1;
+    unsigned int b_long_castle: 1;
+    unsigned int en_passant_file: 4; //0-15 8 files + 1 for not available :(
+    unsigned int m50_rule: 6; //0-63 (max 50)
+    //17 flag bits remaining.
     unsigned int board[8];
 } ChessBoard;
 

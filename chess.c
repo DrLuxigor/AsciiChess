@@ -11,7 +11,13 @@
 
 ChessBoard init_chessboard() {
     ChessBoard board;
-    board.flags = 0;
+    board.turn = 0;
+    board.w_short_castle = 1;
+    board.w_long_castle = 1;
+    board.b_short_castle = 1;
+    board.b_long_castle = 1;
+    board.en_passant_file = 0;
+    board.m50_rule = 0;
     board.board[0] = ROOK << 28 | KNIGHT << 24 | BISHOP << 20 | QUEEN << 16 | KING << 12 | BISHOP << 8 | KNIGHT << 4 |
                      ROOK;
     board.board[1] = PAWN << 28 | PAWN << 24 | PAWN << 20 | PAWN << 16 | PAWN << 12 | PAWN << 8 | PAWN << 4 | PAWN;
@@ -72,16 +78,15 @@ void print_board(const ChessBoard board) {
     printf("    a   b   c   d   e   f   g   h\n");
 }
 
-bool try_move_pawn(ChessBoard *board, const char piece, const char fileFrom, const char rankFrom,
-                   const char fileTo, const char rankTo) {
+bool try_move_pawn(ChessBoard *board, const char piece, const signed char fileFrom, const signed char rankFrom,
+                   const signed char fileTo, const signed char rankTo) {
     //trying to move piece backward or sideways
     const bool black = piece & COLOR_MASK;
     if (black && rankFrom <= rankTo) { return false; }
     if (!black && rankFrom >= rankTo) { return false; }
     if (rankFrom == rankTo) { return false; }
 
-    //trying to move pawn too far. (overflow helps us here)
-    if (rankTo - rankFrom > 2)
+    if (abs(rankTo - rankFrom) > 2)
         return false;
 
     const char moves = black ? rankFrom - rankTo : rankTo - rankFrom;
@@ -117,19 +122,31 @@ bool try_move_pawn(ChessBoard *board, const char piece, const char fileFrom, con
         assert(moves == 1);
 
         //can only move 1 left or right for capture
-        if (fileFrom - fileTo > 1) { return false; }
+        if (abs(fileFrom - fileTo) != 1) { return false; }
 
         if (!is_empty(*board, rankTo, fileTo)) {
             set_piece(board, piece, rankTo, fileTo);
             set_empty(board, rankFrom, fileFrom);
             return true;
-        } else if (false) {
-            //TODO ente passente
+        } else {
+            if(board->en_passant_file == fileTo) {
+                if(piece & COLOR_MASK && rankFrom == 3) {
+                    //black
+                    set_piece(board, piece, rankTo, fileTo);
+                    set_empty(board, rankFrom, fileFrom);
+                    set_empty(board, rankFrom, fileTo);
+                    return true;
+                }
+                if(!(piece & COLOR_MASK) && rankFrom == 4) {
+                    set_piece(board, piece, rankTo, fileTo);
+                    set_empty(board, rankFrom, fileFrom);
+                    set_empty(board, rankFrom, fileTo);
+                    return true;
+                }
+            }
         }
     }
-
-
-    return true;
+    return false;
 }
 
 bool try_move_bishop(ChessBoard *board, const char piece, const char fileFrom, const char rankFrom,
@@ -222,16 +239,13 @@ bool move(ChessBoard *board, const char *from, const char *to) {
     //no piece at square
     if (piece_to_move == 0) { return false; }
 
-    //not your turn
+    //not your turn / moving opponents piece
     const char source_color = (piece_to_move & COLOR_MASK) >> 3;
-    if (source_color != (board->flags & 0b1)) { return false; }
+    if (source_color != board->turn) { return false; }
 
     //captures own piece
     const char dest_color = (piece_at_dest & COLOR_MASK) >> 3;
     if ((piece_at_dest & PIECE_MASK) != EMPTY && source_color == dest_color) { return false; }
-
-    //trying to move opponents piece
-    if (board->flags & 0b1 != (piece_to_move & COLOR_MASK) >> 3) { return false; }
 
     const char fileFrom = from[0] - 'a';
     const char rankFrom = from[1] - '1';
@@ -239,7 +253,6 @@ bool move(ChessBoard *board, const char *from, const char *to) {
     const char rankTo = to[1] - '1';
 
     bool ok = false;
-    //check if move is allowed
     if ((piece_to_move & PIECE_MASK) == PAWN) {
         ok = try_move_pawn(board, piece_to_move, fileFrom, rankFrom, fileTo, rankTo);
     } else if ((piece_to_move & PIECE_MASK) == ROOK) {
@@ -253,12 +266,55 @@ bool move(ChessBoard *board, const char *from, const char *to) {
     } else if ((piece_to_move & PIECE_MASK) == KING) {
         ok = try_move_king(board, piece_to_move, fileFrom, rankFrom, fileTo, rankTo);
     }
-    if (ok) { board->flags ^= 0b1; } else { return false; }
+    if (ok) {
+        //Update board state
+        board->turn ^= 0b1;
 
-    return true;
+        //50 move rule
+        if((piece_to_move & PIECE_MASK) == PAWN || (piece_at_dest & PIECE_MASK) != EMPTY) {
+            board->m50_rule = 0;
+        } else {
+            board->m50_rule++;
+        }
+
+        //Castling
+        if((piece_to_move & PIECE_MASK) == KING) {
+            if(piece_to_move & COLOR_MASK) {
+                board->b_short_castle = 0;
+                board->b_long_castle = 0;
+            } else {
+                board->w_short_castle = 0;
+                board->b_long_castle = 0;
+            }
+        }
+        if(board->w_long_castle && get_board_at(*board, 0, 0) != ROOK) {
+            board->w_long_castle = 0;
+        }
+        if(board->w_short_castle && get_board_at(*board, 0, 7) != ROOK) {
+            board->w_short_castle = 0;
+        }
+        if(board->b_long_castle && get_board_at(*board, 7, 0) != (COLOR_MASK | ROOK)) {
+            board->b_long_castle = 0;
+        }
+        if(board->b_short_castle && get_board_at(*board, 7, 7) != (COLOR_MASK | ROOK)) {
+            board->b_short_castle = 0;
+        }
+
+        //En passant
+        if((piece_to_move & PIECE_MASK) == PAWN && abs(rankFrom - rankTo) == 2) {
+            board->en_passant_file = fileTo;
+        } else {
+            board->en_passant_file = 0b1111;
+        }
+        return true;
+    }
+    return false;
 }
 
-void set_piece(ChessBoard *board, const char piece, const char rank, const char file) {
+void set_piece(ChessBoard *board, char piece, const char rank, const char file) {
+    if ((piece & PIECE_MASK) == PAWN && (rank == 0 || rank == 7)) {
+        piece = (piece & COLOR_MASK) | QUEEN;
+    }
     unsigned int clearMask = 0b11111111111111111111111111111111;
     const unsigned int clears = 0b1111 << ((7 - file) * 4);
     clearMask ^= clears;
