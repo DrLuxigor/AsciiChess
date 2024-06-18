@@ -33,6 +33,12 @@ ChessBoard init_chessboard() {
     return board;
 }
 
+char get_board_at(const ChessBoard board, const char rank, const char file) {
+    assert(rank >= 0 && rank < 8);
+    assert(file >= 0 && file < 8);
+    return board.board[rank] >> ((7 - file) * 4) & 0b1111;
+}
+
 char get_board_at_square(const ChessBoard board, const char *square) {
     assert(square[0] >= 'a' && square[0] <= 'h');
     assert(square[1] >= '1' && square[1] <= '8');
@@ -41,11 +47,35 @@ char get_board_at_square(const ChessBoard board, const char *square) {
     return get_board_at(board, rank, file);
 }
 
-char get_board_at(const ChessBoard board, const char rank, const char file) {
-    assert(rank >= 0 && rank < 8);
-    assert(file >= 0 && file < 8);
-    return board.board[rank] >> ((7 - file) * 4) & 0b1111;
+
+void set_piece(ChessBoard *board, char piece, const char rank, const char file) {
+    if ((piece & PIECE_MASK) == PAWN && (rank == 0 || rank == 7)) {
+        piece = (piece & COLOR_MASK) | QUEEN;
+    }
+    unsigned int clearMask = 0b11111111111111111111111111111111;
+    const unsigned int clears = 0b1111 << ((7 - file) * 4);
+    clearMask ^= clears;
+    board->board[rank] &= clearMask;
+    board->board[rank] |= piece << ((7 - file) * 4);
 }
+
+void set_empty(ChessBoard *board, const char rank, const char file) {
+    unsigned int clearMask = 0b11111111111111111111111111111111;
+    const unsigned int clears = 0b1111 << ((7 - file) * 4);
+    clearMask ^= clears;
+    board->board[rank] &= clearMask;
+}
+
+bool is_empty(const ChessBoard board, const char rank, const char file) {
+    return (get_board_at(board, rank, file) & PIECE_MASK) == EMPTY;
+}
+
+bool square_attacked(const ChessBoard board, const char rank, const char file, const char byColor) {
+    //TODO implement this terrible function to write ..split up by pieces, attacked_by_rook, pawn, knight, bishop,
+    //(queen and king composite of others))
+    return false;
+}
+
 
 void print_board(const ChessBoard board) {
     bool square_black = false;
@@ -129,15 +159,15 @@ bool try_move_pawn(ChessBoard *board, const char piece, const signed char fileFr
             set_empty(board, rankFrom, fileFrom);
             return true;
         } else {
-            if(board->en_passant_file == fileTo) {
-                if(piece & COLOR_MASK && rankFrom == 3) {
+            if (board->en_passant_file == fileTo) {
+                if (piece & COLOR_MASK && rankFrom == 3) {
                     //black
                     set_piece(board, piece, rankTo, fileTo);
                     set_empty(board, rankFrom, fileFrom);
                     set_empty(board, rankFrom, fileTo);
                     return true;
                 }
-                if(!(piece & COLOR_MASK) && rankFrom == 4) {
+                if (!(piece & COLOR_MASK) && rankFrom == 4) {
                     set_piece(board, piece, rankTo, fileTo);
                     set_empty(board, rankFrom, fileFrom);
                     set_empty(board, rankFrom, fileTo);
@@ -219,9 +249,58 @@ bool try_move_king(ChessBoard *board, const char piece, const char fileFrom, con
     const signed char rankOffset = rankTo - rankFrom;
     const signed char fileOffset = fileTo - fileFrom;
 
+    //castles
+    if(rankOffset == 0 && abs(fileOffset) == 2) {
+        if(rankFrom == 7 && fileOffset < 0 && board->b_long_castle) {
+            //castle black long
+            if(!square_attacked(*board, rankFrom, fileFrom, WHITE) &&
+                !square_attacked(*board, rankFrom, fileFrom - 1, WHITE) &&
+                !square_attacked(*board, rankFrom, fileTo, WHITE)) {
+                set_empty(board, rankFrom, 0);
+                set_empty(board, rankFrom, fileFrom);
+                set_piece(board, piece, rankTo, fileTo);
+                set_piece(board, COLOR_MASK | ROOK, rankTo, fileFrom - 1);
+                return true;
+            }
+        } else if(rankFrom == 7 && fileOffset > 0 && board->b_short_castle) {
+            //caste black short
+            if(!square_attacked(*board, rankFrom, fileFrom, WHITE) &&
+                !square_attacked(*board, rankFrom, fileFrom + 1, WHITE) &&
+                !square_attacked(*board, rankFrom, fileTo, WHITE)) {
+                set_empty(board, rankFrom, 7);
+                set_empty(board, rankFrom, fileFrom);
+                set_piece(board, piece, rankTo, fileTo);
+                set_piece(board, COLOR_MASK | ROOK, rankTo, fileFrom + 1);
+                return true;
+            }
+        } else if(rankFrom == 0 && fileOffset < 0 && board->w_long_castle) {
+            //castle white long
+            if(!square_attacked(*board, rankFrom, fileFrom, BLACK) &&
+                !square_attacked(*board, rankFrom, fileFrom - 1, BLACK) &&
+                !square_attacked(*board, rankFrom, fileTo, BLACK)) {
+                set_empty(board, rankFrom, 0);
+                set_empty(board, rankFrom, fileFrom);
+                set_piece(board, piece, rankTo, fileTo);
+                set_piece(board, ROOK, rankTo, fileFrom - 1);
+                return true;
+            }
+        } else if (rankFrom == 0 && fileOffset > 0 && board->w_short_castle) {
+            //castle white short
+            if(!square_attacked(*board, rankFrom, fileFrom, BLACK) &&
+                !square_attacked(*board, rankFrom, fileFrom + 1, BLACK) &&
+                !square_attacked(*board, rankFrom, fileTo, BLACK)) {
+                set_empty(board, rankFrom, 7);
+                set_empty(board, rankFrom, fileFrom);
+                set_piece(board, piece, rankTo, fileTo);
+                set_piece(board, ROOK, rankTo, fileFrom + 1);
+                return true;
+            }
+        }
+    }
+
     //king can only move 1 square
-    if (rankOffset > 1 || fileOffset > 1) { return false; }
-    assert(rankOffset > 0 || fileOffset > 0);
+    if (abs(rankOffset) > 1 || abs(fileOffset) > 1) { return false; }
+    assert(rankOffset != 0 || fileOffset != 0);
 
     if (rankOffset != 0 && fileOffset != 0) {
         return try_move_bishop(board, piece, fileFrom, rankFrom, fileTo, rankTo);
@@ -271,15 +350,15 @@ bool move(ChessBoard *board, const char *from, const char *to) {
         board->turn ^= 0b1;
 
         //50 move rule
-        if((piece_to_move & PIECE_MASK) == PAWN || (piece_at_dest & PIECE_MASK) != EMPTY) {
+        if ((piece_to_move & PIECE_MASK) == PAWN || (piece_at_dest & PIECE_MASK) != EMPTY) {
             board->m50_rule = 0;
         } else {
             board->m50_rule++;
         }
 
         //Castling
-        if((piece_to_move & PIECE_MASK) == KING) {
-            if(piece_to_move & COLOR_MASK) {
+        if ((piece_to_move & PIECE_MASK) == KING) {
+            if (piece_to_move & COLOR_MASK) {
                 board->b_short_castle = 0;
                 board->b_long_castle = 0;
             } else {
@@ -287,21 +366,21 @@ bool move(ChessBoard *board, const char *from, const char *to) {
                 board->b_long_castle = 0;
             }
         }
-        if(board->w_long_castle && get_board_at(*board, 0, 0) != ROOK) {
+        if (board->w_long_castle && get_board_at(*board, 0, 0) != ROOK) {
             board->w_long_castle = 0;
         }
-        if(board->w_short_castle && get_board_at(*board, 0, 7) != ROOK) {
+        if (board->w_short_castle && get_board_at(*board, 0, 7) != ROOK) {
             board->w_short_castle = 0;
         }
-        if(board->b_long_castle && get_board_at(*board, 7, 0) != (COLOR_MASK | ROOK)) {
+        if (board->b_long_castle && get_board_at(*board, 7, 0) != (COLOR_MASK | ROOK)) {
             board->b_long_castle = 0;
         }
-        if(board->b_short_castle && get_board_at(*board, 7, 7) != (COLOR_MASK | ROOK)) {
+        if (board->b_short_castle && get_board_at(*board, 7, 7) != (COLOR_MASK | ROOK)) {
             board->b_short_castle = 0;
         }
 
         //En passant
-        if((piece_to_move & PIECE_MASK) == PAWN && abs(rankFrom - rankTo) == 2) {
+        if ((piece_to_move & PIECE_MASK) == PAWN && abs(rankFrom - rankTo) == 2) {
             board->en_passant_file = fileTo;
         } else {
             board->en_passant_file = 0b1111;
@@ -309,26 +388,4 @@ bool move(ChessBoard *board, const char *from, const char *to) {
         return true;
     }
     return false;
-}
-
-void set_piece(ChessBoard *board, char piece, const char rank, const char file) {
-    if ((piece & PIECE_MASK) == PAWN && (rank == 0 || rank == 7)) {
-        piece = (piece & COLOR_MASK) | QUEEN;
-    }
-    unsigned int clearMask = 0b11111111111111111111111111111111;
-    const unsigned int clears = 0b1111 << ((7 - file) * 4);
-    clearMask ^= clears;
-    board->board[rank] &= clearMask;
-    board->board[rank] |= piece << ((7 - file) * 4);
-}
-
-void set_empty(ChessBoard *board, const char rank, const char file) {
-    unsigned int clearMask = 0b11111111111111111111111111111111;
-    const unsigned int clears = 0b1111 << ((7 - file) * 4);
-    clearMask ^= clears;
-    board->board[rank] &= clearMask;
-}
-
-bool is_empty(const ChessBoard board, const char rank, const char file) {
-    return (get_board_at(board, rank, file) & PIECE_MASK) == EMPTY;
 }

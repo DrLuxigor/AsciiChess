@@ -27,24 +27,22 @@
 #define PIECE_MASK 0b111
 #define COLOR_MASK 0b1000
 
+#define WHITE 0b0
+#define BLACK 0b1
+
 typedef struct {
     unsigned int turn : 1;
     unsigned int w_short_castle: 1;
     unsigned int w_long_castle: 1;
     unsigned int b_short_castle: 1;
     unsigned int b_long_castle: 1;
-    unsigned int en_passant_file: 4; //0-15 8 files + 1 for not available :(
+    unsigned int en_passant_file: 4; //0-15 0-7 + 1 for not available :(
     unsigned int m50_rule: 6; //0-63 (max 50)
-    //17 flag bits remaining.
+    //17 flag bits remaining. (make short?)
     unsigned int board[8];
 } ChessBoard;
 
 ChessBoard init_chessboard();
-char get_board_at_square(const ChessBoard board,const char* square);
-char get_board_at(const ChessBoard board, const char rank, const char file);
 void print_board(const ChessBoard board);
 bool move(ChessBoard* board, const char* from, const char* to);
-void set_piece(ChessBoard* board, char piece, char rank, char file);
-void set_empty(ChessBoard* board, char rank, char file);
-bool is_empty(const ChessBoard board, char rank, char file);
 #endif //CHESS_H

@@ -1,4 +1,3 @@
-Castles
 make moves illegal if own king is in check after the move
 50 move rule (ezpz, reset counter when pawn moves or capture happens)
 3 fold repetition
