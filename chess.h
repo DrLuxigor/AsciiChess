@@ -44,5 +44,6 @@ typedef struct {
 
 ChessBoard init_chessboard();
 void print_board(const ChessBoard board);
+void print_board_better(const ChessBoard board);
 bool move(ChessBoard* board, const char* from, const char* to);
 #endif //CHESS_H

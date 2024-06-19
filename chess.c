@@ -70,9 +70,39 @@ bool is_empty(const ChessBoard board, const char rank, const char file) {
     return (get_board_at(board, rank, file) & PIECE_MASK) == EMPTY;
 }
 
+bool square_attacked_by_pawn(const ChessBoard board, const char rank, const char file, const char byColor) {
+    if(byColor) {
+        //blacks pawns cant be on 8th rank
+        if (rank + 1 > 6)
+            return false;
+        //black attacks white
+        if (file + 1 < 8 && get_board_at(board, rank+1, file+1) == (PAWN | COLOR_MASK) ) {
+            return true;
+        }
+        if (file - 1 >= 0 && get_board_at(board, rank+1, file-1) == (PAWN | COLOR_MASK) ) {
+            return true;
+        }
+    } else {
+        //white attacks black
+        if (rank - 1 < 1)
+            return false;
+        //black attacks white
+        if (file + 1 < 8 && get_board_at(board, rank-1, file+1) == PAWN) {
+            return true;
+        }
+        if (file - 1 >= 0 && get_board_at(board, rank-1, file-1) == PAWN) {
+            return true;
+        }
+    }
+    return false;
+}
+
 bool square_attacked(const ChessBoard board, const char rank, const char file, const char byColor) {
     //TODO implement this terrible function to write ..split up by pieces, attacked_by_rook, pawn, knight, bishop,
     //(queen and king composite of others))
+    if(square_attacked_by_pawn(board, rank, file, byColor))
+        return true;
+
     return false;
 }
 
@@ -106,6 +136,105 @@ void print_board(const ChessBoard board) {
     }
     printf("\033[0m--------------------------------\n");
     printf("    a   b   c   d   e   f   g   h\n");
+}
+
+char* get_repr_str(const ChessBoard board, const char rank, const char file) {
+    const char piece = get_board_at(board, rank, file);
+    if ((piece & PIECE_MASK) == EMPTY) { return " "; }
+    if ((piece & PIECE_MASK) == PAWN) { return piece & COLOR_MASK ? "p" : "p"; }
+    if ((piece & PIECE_MASK) == KNIGHT) { return piece & COLOR_MASK ? "N" : "N"; }
+    if ((piece & PIECE_MASK) == ROOK) { return piece & COLOR_MASK ? "R" : "R"; }
+    if ((piece & PIECE_MASK) == BISHOP) { return piece & COLOR_MASK ? "B" : "B"; }
+    if ((piece & PIECE_MASK) == QUEEN) { return piece & COLOR_MASK ? "Q" : "Q"; }
+    if ((piece & PIECE_MASK) == KING) { return piece & COLOR_MASK ? "K" : "K"; }
+    return " ";
+}
+
+void print_board_better(const ChessBoard board) {
+
+    printf("    a     b     c     d     e     f     g     h    \n");
+    printf("  +-----+-----+-----+-----+-----+-----+-----+-----+\n");
+    printf("8 |  %s  |  %s  |  %s  |  %s  |  %s  |  %s  |  %s  |  %s  | 8\n",
+        get_repr_str(board, 7, 0),
+        get_repr_str(board, 7, 1),
+        get_repr_str(board, 7, 2),
+        get_repr_str(board, 7, 3),
+        get_repr_str(board, 7, 4),
+        get_repr_str(board, 7, 5),
+        get_repr_str(board, 7, 6),
+        get_repr_str(board, 7, 7));
+    printf("  +-----+-----+-----+-----+-----+-----+-----+-----+\n");
+    printf("7 |  %s  |  %s  |  %s  |  %s  |  %s  |  %s  |  %s  |  %s  | 7\n",
+        get_repr_str(board, 6, 0),
+        get_repr_str(board, 6, 1),
+        get_repr_str(board, 6, 2),
+        get_repr_str(board, 6, 3),
+        get_repr_str(board, 6, 4),
+        get_repr_str(board, 6, 5),
+        get_repr_str(board, 6, 6),
+        get_repr_str(board, 6, 7));
+    printf("  +-----+-----+-----+-----+-----+-----+-----+-----+\n");
+    printf("6 |  %s  |  %s  |  %s  |  %s  |  %s  |  %s  |  %s  |  %s  | 6\n",
+        get_repr_str(board, 5, 0),
+        get_repr_str(board, 5, 1),
+        get_repr_str(board, 5, 2),
+        get_repr_str(board, 5, 3),
+        get_repr_str(board, 5, 4),
+        get_repr_str(board, 5, 5),
+        get_repr_str(board, 5, 6),
+        get_repr_str(board, 5, 7));
+    printf("  +-----+-----+-----+-----+-----+-----+-----+-----+\n");
+    printf("5 |  %s  |  %s  |  %s  |  %s  |  %s  |  %s  |  %s  |  %s  | 5\n",
+        get_repr_str(board, 4, 0),
+        get_repr_str(board, 4, 1),
+        get_repr_str(board, 4, 2),
+        get_repr_str(board, 4, 3),
+        get_repr_str(board, 4, 4),
+        get_repr_str(board, 4, 5),
+        get_repr_str(board, 4, 6),
+        get_repr_str(board, 4, 7));
+    printf("  +-----+-----+-----+-----+-----+-----+-----+-----+\n");
+    printf("4 |  %s  |  %s  |  %s  |  %s  |  %s  |  %s  |  %s  |  %s  | 4\n",
+        get_repr_str(board, 3, 0),
+        get_repr_str(board, 3, 1),
+        get_repr_str(board, 3, 2),
+        get_repr_str(board, 3, 3),
+        get_repr_str(board, 3, 4),
+        get_repr_str(board, 3, 5),
+        get_repr_str(board, 3, 6),
+        get_repr_str(board, 3, 7));
+    printf("  +-----+-----+-----+-----+-----+-----+-----+-----+\n");
+    printf("3 |  %s  |  %s  |  %s  |  %s  |  %s  |  %s  |  %s  |  %s  | 3\n",
+        get_repr_str(board, 2, 0),
+        get_repr_str(board, 2, 1),
+        get_repr_str(board, 2, 2),
+        get_repr_str(board, 2, 3),
+        get_repr_str(board, 2, 4),
+        get_repr_str(board, 2, 5),
+        get_repr_str(board, 2, 6),
+        get_repr_str(board, 2, 7));
+    printf("  +-----+-----+-----+-----+-----+-----+-----+-----+\n");
+    printf("2 |  %s  |  %s  |  %s  |  %s  |  %s  |  %s  |  %s  |  %s  | 2\n",
+        get_repr_str(board, 1, 0),
+        get_repr_str(board, 1, 1),
+        get_repr_str(board, 1, 2),
+        get_repr_str(board, 1, 3),
+        get_repr_str(board, 1, 4),
+        get_repr_str(board, 1, 5),
+        get_repr_str(board, 1, 6),
+        get_repr_str(board, 1, 7));
+    printf("  +-----+-----+-----+-----+-----+-----+-----+-----+\n");
+    printf("1 |  %s  |  %s  |  %s  |  %s  |  %s  |  %s  |  %s  |  %s  | 1\n",
+        get_repr_str(board, 0, 0),
+        get_repr_str(board, 0, 1),
+        get_repr_str(board, 0, 2),
+        get_repr_str(board, 0, 3),
+        get_repr_str(board, 0, 4),
+        get_repr_str(board, 0, 5),
+        get_repr_str(board, 0, 6),
+        get_repr_str(board, 0, 7));
+    printf("  +-----+-----+-----+-----+-----+-----+-----+-----+\n");
+    printf("    a     b     c     d     e     f     g     h    \n");
 }
 
 bool try_move_pawn(ChessBoard *board, const char piece, const signed char fileFrom, const signed char rankFrom,

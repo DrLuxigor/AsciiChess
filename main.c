@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include "chess.h"
+//#include <ncurses.h>
 #include <string.h>
 
 int main(void) {
@@ -9,6 +10,6 @@ int main(void) {
     move(&board, "d4", "d5");
     move(&board, "c7", "c5");
     move(&board, "d5", "c6");
-    print_board(board);
+    print_board_better(board);
     return 0;
 }
