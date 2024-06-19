@@ -9,7 +9,7 @@
 #include <math.h>
 #include <string.h>
 
-int knight_moves[8][2] = {
+const signed char knight_moves[8][2] = {
     { 2,  1},
     { 2, -1},
     {-2,  1},
@@ -18,6 +18,20 @@ int knight_moves[8][2] = {
     { 1, -2},
     {-1,  2},
     {-1, -2}
+};
+
+const signed char rook_moves[4][2] = {
+    {1, 0},
+    {-1, 0},
+    {0, 1},
+    {0, -1}
+};
+
+const signed char bishop_moves[4][2] = {
+    {1,1},
+    {1, -1},
+    {-1, 1},
+    {-1, -1}
 };
 
 ChessBoard init_chessboard() {
@@ -58,6 +72,9 @@ char get_board_at_square(const ChessBoard board, const char *square) {
     return get_board_at(board, rank, file);
 }
 
+bool in_bounds(const signed char rank, const signed char file) {
+    return rank >= 0 && rank < 8 && file >= 0 && file < 8;
+}
 
 void set_piece(ChessBoard *board, char piece, const char rank, const char file) {
     if ((piece & PIECE_MASK) == PAWN && (rank == 0 || rank == 7)) {
@@ -120,12 +137,59 @@ bool square_attacked_by_knight(const ChessBoard board, const char rank, const ch
     return false;
 }
 
+bool square_attacked_by_rook_q_k(const ChessBoard board, const char rank, const char file, const char byColor) {
+    for(char i = 0; i < 4; i++) {
+        signed char steps = 1;
+        const signed char dir_rank = rook_moves[i][0];
+        const signed char dir_file = rook_moves[i][1];
+        while(in_bounds(rank + dir_rank*steps, file + dir_file*steps)) {
+            const char piece = get_board_at(board, rank + dir_rank*steps, file + dir_file*steps);
+            if (piece == EMPTY) {
+                steps++;
+                continue;
+            }
+            if (piece == (ROOK | byColor << 3) || piece == (QUEEN | byColor << 3))
+                return true;
+            if (steps == 1 && piece == (KING | byColor << 3))
+                return true;
+            break;
+        }
+    }
+    return false;
+}
+
+bool square_attacked_by_bishop_q_k(const ChessBoard board, const char rank, const char file, const char byColor) {
+    for(char i = 0; i < 4; i++) {
+        signed char steps = 1;
+        const signed char dir_rank = bishop_moves[i][0];
+        const signed char dir_file = bishop_moves[i][1];
+        while(in_bounds(rank + dir_rank*steps, file + dir_file*steps)) {
+            const char piece = get_board_at(board, rank + dir_rank*steps, file + dir_file*steps);
+            if (piece == EMPTY) {
+                steps++;
+                continue;
+            }
+            if (piece == (BISHOP | byColor << 3) || piece == (QUEEN | byColor << 3))
+                return true;
+            if (steps == 1 && piece == (KING | byColor << 3))
+                return true;
+            break;
+        }
+    }
+    return false;
+}
+
 bool square_attacked(const ChessBoard board, const char rank, const char file, const char byColor) {
     //TODO implement this terrible function to write ..split up by pieces, attacked_by_rook, pawn, knight, bishop,
     //(queen and king composite of others))
     if(square_attacked_by_pawn(board, rank, file, byColor))
         return true;
-
+    if(square_attacked_by_knight(board, rank, file, byColor))
+        return true;
+    if(square_attacked_by_rook_q_k(board, rank, file, byColor))
+        return true;
+    if(square_attacked_by_bishop_q_k(board, rank, file, byColor))
+        return true;
     return false;
 }
 
@@ -164,12 +228,12 @@ void print_board(const ChessBoard board) {
 char* get_repr_str(const ChessBoard board, const char rank, const char file) {
     const char piece = get_board_at(board, rank, file);
     if ((piece & PIECE_MASK) == EMPTY) { return " "; }
-    if ((piece & PIECE_MASK) == PAWN) { return piece & COLOR_MASK ? "p" : "p"; }
-    if ((piece & PIECE_MASK) == KNIGHT) { return piece & COLOR_MASK ? "N" : "N"; }
-    if ((piece & PIECE_MASK) == ROOK) { return piece & COLOR_MASK ? "R" : "R"; }
-    if ((piece & PIECE_MASK) == BISHOP) { return piece & COLOR_MASK ? "B" : "B"; }
-    if ((piece & PIECE_MASK) == QUEEN) { return piece & COLOR_MASK ? "Q" : "Q"; }
-    if ((piece & PIECE_MASK) == KING) { return piece & COLOR_MASK ? "K" : "K"; }
+    if ((piece & PIECE_MASK) == PAWN) { return piece & COLOR_MASK ? "\033[0;35mp\033[0;37m" : "p"; }
+    if ((piece & PIECE_MASK) == KNIGHT) { return piece & COLOR_MASK ? "\033[0;35mN\033[0;37m" : "N"; }
+    if ((piece & PIECE_MASK) == ROOK) { return piece & COLOR_MASK ? "\033[0;35mR\033[0;37m" : "R"; }
+    if ((piece & PIECE_MASK) == BISHOP) { return piece & COLOR_MASK ? "\033[0;35mB\033[0;37m" : "B"; }
+    if ((piece & PIECE_MASK) == QUEEN) { return piece & COLOR_MASK ? "\033[0;35mQ\033[0;37m" : "Q"; }
+    if ((piece & PIECE_MASK) == KING) { return piece & COLOR_MASK ? "\033[0;35mK\033[0;37m" : "K"; }
     return " ";
 }
 
