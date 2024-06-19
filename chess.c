@@ -9,6 +9,17 @@
 #include <math.h>
 #include <string.h>
 
+int knight_moves[8][2] = {
+    { 2,  1},
+    { 2, -1},
+    {-2,  1},
+    {-2, -1},
+    { 1,  2},
+    { 1, -2},
+    {-1,  2},
+    {-1, -2}
+};
+
 ChessBoard init_chessboard() {
     ChessBoard board;
     board.turn = 0;
@@ -93,6 +104,18 @@ bool square_attacked_by_pawn(const ChessBoard board, const char rank, const char
         if (file - 1 >= 0 && get_board_at(board, rank-1, file-1) == PAWN) {
             return true;
         }
+    }
+    return false;
+}
+
+bool square_attacked_by_knight(const ChessBoard board, const char rank, const char file, const char byColor) {
+    for (int i = 0; i < 8; i++) {
+        const signed char target_rank = rank + knight_moves[i][0];
+        const signed char target_file = file + knight_moves[i][1];
+        if (target_rank < 0 || target_rank > 7 || target_file < 0 || target_file > 7)
+            continue;
+        if (get_board_at(board, target_rank, target_file) == (KNIGHT | byColor << 3))
+            return true;
     }
     return false;
 }
