@@ -94,6 +94,20 @@ void set_empty(ChessBoard *board, const char rank, const char file) {
     board->board[rank] &= clearMask;
 }
 
+void find_piece(const ChessBoard board, const char piece, char* rank, char* file) {
+    for (unsigned char i = 0; i < 8; i++) {
+        for (unsigned char j = 0; j < 8; j++) {
+            if (get_board_at(board, i, j) == piece) {
+                *rank = i;
+                *file = j;
+                return;
+            }
+        }
+    }
+    *rank = -1;
+    *file = -1;
+}
+
 bool is_empty(const ChessBoard board, const char rank, const char file) {
     return (get_board_at(board, rank, file) & PIECE_MASK) == EMPTY;
 }
@@ -561,6 +575,15 @@ bool move(ChessBoard *board, const char *from, const char *to) {
     } else if ((piece_to_move & PIECE_MASK) == KING) {
         ok = try_move_king(board, piece_to_move, fileFrom, rankFrom, fileTo, rankTo);
     }
+    //TODO check if king of current move color is in check --> rollback move, return false
+    char king_rank, king_file;
+    find_piece(*board, KING & board->turn << 3, &king_rank, &king_file);
+    const bool attacked = square_attacked(*board, king_rank, king_rank, !board->turn);
+    if(attacked) {
+        //rollback
+    }
+
+
     if (ok) {
         //Update board state
         board->turn ^= 0b1;
