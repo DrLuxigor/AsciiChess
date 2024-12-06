@@ -7,6 +7,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <math.h>
+#include <stdlib.h>
 #include <string.h>
 
 const signed char knight_moves[8][2] = {
@@ -194,8 +195,6 @@ bool square_attacked_by_bishop_q_k(const ChessBoard board, const char rank, cons
 }
 
 bool square_attacked(const ChessBoard board, const char rank, const char file, const char byColor) {
-    //TODO implement this terrible function to write ..split up by pieces, attacked_by_rook, pawn, knight, bishop,
-    //(queen and king composite of others))
     if(square_attacked_by_pawn(board, rank, file, byColor))
         return true;
     if(square_attacked_by_knight(board, rank, file, byColor))
@@ -539,6 +538,10 @@ bool try_move_king(ChessBoard *board, const char piece, const char fileFrom, con
 }
 
 bool move(ChessBoard *board, const char *from, const char *to) {
+    printf("Move!\n Turn: %d", board->turn);
+    ChessBoard* boardCopy = malloc(sizeof(ChessBoard));
+    memcpy(boardCopy, board, sizeof(ChessBoard));
+
     const char piece_to_move = get_board_at_square(*board, from);
     const char piece_at_dest = get_board_at_square(*board, to);
 
@@ -577,11 +580,16 @@ bool move(ChessBoard *board, const char *from, const char *to) {
     }
     //TODO check if king of current move color is in check --> rollback move, return false
     char king_rank, king_file;
-    find_piece(*board, KING & board->turn << 3, &king_rank, &king_file);
-    const bool attacked = square_attacked(*board, king_rank, king_rank, !board->turn);
+    find_piece(*board, KING | board->turn << 3, &king_rank, &king_file);
+    printf("Checking if king attacked at %d %d", king_rank, king_file);
+    const bool attacked = square_attacked(*board, king_rank, king_file, !board->turn);
     if(attacked) {
-        //rollback
+        printf("Attacked!!\n");
+        memcpy(board, boardCopy, sizeof(ChessBoard));
+        free(boardCopy);
+        return false;
     }
+
 
 
     if (ok) {
