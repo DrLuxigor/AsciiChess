@@ -78,6 +78,7 @@ bool in_bounds(const signed char rank, const signed char file) {
 }
 
 void set_piece(ChessBoard *board, char piece, const char rank, const char file) {
+    //Promotion
     if ((piece & PIECE_MASK) == PAWN && (rank == 0 || rank == 7)) {
         piece = (piece & COLOR_MASK) | QUEEN;
     }
@@ -538,7 +539,6 @@ bool try_move_king(ChessBoard *board, const char piece, const char fileFrom, con
 }
 
 bool move(ChessBoard *board, const char *from, const char *to) {
-    printf("Move!\n Turn: %d", board->turn);
     ChessBoard* boardCopy = malloc(sizeof(ChessBoard));
     memcpy(boardCopy, board, sizeof(ChessBoard));
 
@@ -581,10 +581,8 @@ bool move(ChessBoard *board, const char *from, const char *to) {
     //TODO check if king of current move color is in check --> rollback move, return false
     char king_rank, king_file;
     find_piece(*board, KING | board->turn << 3, &king_rank, &king_file);
-    printf("Checking if king attacked at %d %d", king_rank, king_file);
     const bool attacked = square_attacked(*board, king_rank, king_file, !board->turn);
     if(attacked) {
-        printf("Attacked!!\n");
         memcpy(board, boardCopy, sizeof(ChessBoard));
         free(boardCopy);
         return false;
